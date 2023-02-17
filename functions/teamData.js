@@ -137,7 +137,7 @@ const teamData = functions.https.onRequest(async (req, res) => {
            if(Object.keys(requestData).length === 0 ) return res.status(400).json(getResponseJSON('Request body is empty!', 400));
            const { setTeamApproval } = require('./shared');
            if (decodedToken) {
-            const response = await setTeamApproval(requestData.userId);
+            const response = await setTeamApproval(requestData.userId, requestData.phone);
             if(!response) return res.status(404).json(getResponseJSON('ERROR!', 404));
             return res.status(200).json({message: `Success!`, code:200})
           }

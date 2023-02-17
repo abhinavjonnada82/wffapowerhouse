@@ -102,7 +102,7 @@ const setName = async (data, userId) => {
   }
 }
 
-const setTeamApproval = async (userId) => {
+const setTeamApproval = async (userId, phone) => {
   try {
       let docId = ``
       let docRef = db.collection('users').doc(userId);
@@ -117,6 +117,12 @@ const setTeamApproval = async (userId) => {
               await db.collection("teamRoster").doc(docId).update({approve: true})
               return true
         });
+        console.log('234567')
+      let docRef = db.collection('messages').add({
+          to: `+1${phone}`,
+          body: 'Your team has been approved! - WFFA Team',
+          mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
+      })
     })
     .catch((error) => {
         console.log("Error getting documents: ", error);

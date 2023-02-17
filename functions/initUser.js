@@ -7,10 +7,7 @@ const db = admin.firestore();
 // https://firebase.google.com/docs/functions/auth-events
 exports.initUser = functions.auth.user().onCreate(async (user) => {
 
-  let docRef = db.collection('users').doc(user.uid);
-
-//  const batch = db.batch();
-
+let docRef = db.collection('users').doc(user.uid);
 
   await docRef.set({
     created: admin.firestore.Timestamp.now(),

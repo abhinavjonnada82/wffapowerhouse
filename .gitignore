@@ -72,3 +72,5 @@ ui-debug.log
 functions/node_modules
 
 functions/ui-debug.log
+
+functions/.env.sandbox

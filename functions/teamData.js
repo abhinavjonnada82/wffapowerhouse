@@ -1,5 +1,5 @@
 const functions = require('firebase-functions');
-const { getResponseJSON, setHeaders, validateIDToken, grabTeamData, grabAllTeamData } = require('./shared');
+const { getResponseJSON, setHeaders, validateIDToken } = require('./shared');
 
 const teamData = functions.https.onRequest(async (req, res) => {
     setHeaders(res);

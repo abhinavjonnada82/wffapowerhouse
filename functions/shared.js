@@ -72,6 +72,21 @@ const addTeamData = async (data, userId) => {
    }
 }
 
+const updatePaymentSuccess = async (userId) => {
+    try {
+         const snapshot = await db.collection('users').where('uid', '==', userId).get();
+         if (snapshot.empty) return false
+         const docId = snapshot.docs[0].id;
+         await db.collection("users").doc(docId).update({payment: true})
+         return true;
+     }
+     catch(error){
+         console.error(error);
+         return new Error(error);
+     }
+  }
+  
+
 const grabUserData = async (userId) => {
   try{
       const snapShot = await db.collection('users').where('uid', '==', userId).get();
@@ -102,7 +117,7 @@ const setName = async (data, userId) => {
   }
 }
 
-const setTeamApproval = async (userId) => {
+const setTeamApproval = async (userId, phone) => {
   try {
       let docId = ``
       let docRef = db.collection('users').doc(userId);
@@ -112,11 +127,15 @@ const setTeamApproval = async (userId) => {
       let snapShot = db.collection('teamRoster').where('uid', '==', userId).get()
       .then((querySnapshot) => {
         querySnapshot.forEach(async(doc) =>  {
-            // doc.data() is never undefined for query doc snapshots
             docId = doc.id
               await db.collection("teamRoster").doc(docId).update({approve: true})
               return true
         });
+      let docRef = db.collection('messages').add({
+          to: `+1${phone}`,
+          body: 'Your team has been approved! - WFFA Team',
+          mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
+      })
     })
     .catch((error) => {
         console.log("Error getting documents: ", error);
@@ -154,5 +173,6 @@ module.exports = {
     grabUserData,
     validateIDToken,
     setTeamApproval,
-    setName
+    setName,
+    updatePaymentSuccess
   }

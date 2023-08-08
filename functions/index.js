@@ -51,7 +51,7 @@ const processCashAppPayment = async (req, res) => {
     const { result, statusCode } = await square.paymentsApi.createPayment(payment); // square provides the API client and error types
     if(statusCode === 200) {
         const { validateIDToken, updatePaymentSuccess } = require('./shared');
-        let decodedToken = await validateIDToken(idToken);
+        const decodedToken = await validateIDToken(idToken);
         await updatePaymentSuccess(decodedToken.uid);
         console.log('success', result.payment)
     }

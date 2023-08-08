@@ -117,6 +117,23 @@ const setName = async (data, userId) => {
   }
 }
 
+const integrateRulesEngine = async (data, userId) => {
+    try{
+        const pin = parseInt(data.pin)
+        const snapshot = await db.collection('rulesEngine').where('PIN', '==', pin).get();
+        if (snapshot.empty) return `incorrectPin`
+        await db.collection("users").doc(userId).update({ 
+            rulesEngineActive: true,
+            rules: snapshot.docs[0].data()
+            })
+        return true;
+    }
+    catch(error){
+        console.error(error);
+        return new Error(error);
+    }
+  }
+
 const setTeamApproval = async (userId, phone) => {
   try {
       let docId = ``
@@ -148,6 +165,38 @@ const setTeamApproval = async (userId, phone) => {
   }
 }
 
+const storeAdminRules = async (data) => {
+    try {
+        const userId = data.userId
+        await db.collection('rulesEngine').add(data.rules);
+        const snapshot = await db.collection('users').where('uid', '==', userId).get();
+        if (snapshot.empty) return false
+        const docId = snapshot.docs[0].id;
+        await db.collection("users").doc(docId).update({rulesEngineActive: true})
+        return true;
+     }
+     catch(error){
+         console.error(error);
+         return new Error(error);
+     }
+}
+
+const grabAdminRules = async (userId) => {
+    try{
+        const snapShot = await db.collection('rulesEngine').where('userId', '==', userId).get();
+        if(snapShot){
+              return snapShot.docs.map(document => document.data());
+          }
+          else {
+              return false;
+          }
+    }
+    catch(error){
+        console.error(error);
+        return new Error(error);
+    }
+}
+
 const getResponseJSON = (message, code) => {
     return { message, code };
 };
@@ -174,5 +223,8 @@ module.exports = {
     validateIDToken,
     setTeamApproval,
     setName,
-    updatePaymentSuccess
+    updatePaymentSuccess,
+    storeAdminRules,
+    grabAdminRules,
+    integrateRulesEngine
   }

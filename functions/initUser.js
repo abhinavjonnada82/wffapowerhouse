@@ -17,7 +17,8 @@ let docRef = db.collection('users').doc(user.uid);
     role: 'user',
     teamSignup: false,
     payment: false,
-    approve: false
+    approve: false,
+    rulesEngineActive: false
   });
 
 });

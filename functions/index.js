@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const initUser = require('./initUser');
 const teamData = require('./teamData');
+const notifications = require('./notifications');
 
 const app = express();
 app.use(cors({ origins: true }));
@@ -37,3 +38,4 @@ app.post("/capture-paypal-order", async (req, res) => {
 exports.initUser = initUser.initUser
 exports.teamData = teamData.teamData
 exports.paymentPivot = functions.https.onRequest(app);
+exports.notifications = notifications.notifications;

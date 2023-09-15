@@ -25,7 +25,7 @@ const notifications = functions.https.onRequest(async (req, res) => {
             if(result instanceof Error){
                 return res.status(500).json(getResponseJSON(result.message, 500));
             }
-            return res.status(200).json({data: result, code: 200})
+            return res.status(200).json({code: 200})
         }
         else{
             return res.status(400).json(getResponseJSON('Bad request!', 400));
@@ -47,7 +47,7 @@ const notifications = functions.https.onRequest(async (req, res) => {
             if(result instanceof Error){
                 return res.status(500).json(getResponseJSON(result.message, 500));
             }
-            return res.status(200).json({data: result, code: 200})
+            return res.status(200).json({code: 200})
         }
         else{
             return res.status(400).json(getResponseJSON('Bad request!', 400));

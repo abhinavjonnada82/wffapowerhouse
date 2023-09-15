@@ -1,6 +1,6 @@
-const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const db = admin.firestore();
+
 const { validatePaymentPayload } = require('./paymentServer/schema');
 const { ApiError, client: square } = require('./paymentServer/square');
 const { nanoid } = require('nanoid');
@@ -12,6 +12,12 @@ const baseURL = {
 	    sandbox: "https://api-m.sandbox.paypal.com",
 	   // production: "https://api-m.paypal.com"
 	};
+
+
+require('dotenv').config();
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = require('twilio')(accountSid, authToken);
 
 const setHeaders = (res) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -74,7 +80,11 @@ const addTeamData = async (data, userId) => {
        const snapshot = await db.collection('users').where('uid', '==', userId).get();
        if (snapshot.empty) return false
        const docId = snapshot.docs[0].id;
-       await db.collection("users").doc(docId).update({teamSignup: true})
+       await db.collection("users").doc(docId).update({
+                                    teamSignup: true,
+                                    phone: data.data.phone,
+                                    teamName: data.data.teamName
+                                  })
        return true;
    }
    catch(error){
@@ -201,12 +211,12 @@ const updatePaymentSuccess = async (userId) => {
 const grabUserData = async (userId) => {
   try{
       const snapShot = await db.collection('users').where('uid', '==', userId).get();
-      if(snapShot){
-            return snapShot.docs.map(document => document.data());
-        }
-        else {
-            return false;
-        }
+      if (snapShot.docs.length) {
+        return snapShot.docs.map(document => { return document.data() });
+      } 
+      else {
+        return false;
+      }
   }
   catch(error){
       console.error(error);
@@ -308,6 +318,98 @@ const grabAdminRules = async (userId) => {
     }
 }
 
+const getUnpaidTeam = async () => {
+  try{
+      const snapShot = await db.collection('users').where('approve', '==', true).where('payment', '==', false).where('rulesEngineActive', '==', true)
+      .orderBy('uid', 'asc').get();
+      if(snapShot.size > 0){
+
+            return snapShot.docs.map(document => {
+              try {
+              client.messages
+              .create({
+                body: 'Remainder to pay WFFA dues!',
+                from: '+18776203534',
+                to: processPhoneNumber(document.data().phone)
+              })
+              .then(message => console.log(message.sid));
+            } catch(error){
+              console.error('Twilio error:', error.message);
+              console.error('Twilio moreInfo:', error.moreInfo)
+            }
+            });
+        }
+      else {
+            return false;
+      }
+  }
+  catch(error){
+    console.error(error);
+    return new Error(error);
+  }
+}
+
+const getPaidTeam = async () => {
+  try{
+      const snapShot = await db.collection('users').where('payment', '==', true).where('rulesEngineActive', '==', true).get();
+      if(snapShot.size > 0){
+            return snapShot.docs.map(document => {
+              try {
+              client.messages
+              .create({
+                body: 'Get ready to play!',
+                from: '+18776203534',
+                to: processPhoneNumber(document.data().phone),
+                mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/football.png']
+              })
+              .then(message => console.log(message.sid));
+            } catch(error){
+              console.error('Twilio error:', error.message);
+              console.error('Twilio moreInfo:', error.moreInfo)
+            }
+            });
+        }
+      else {
+            return false;
+      }
+  }
+  catch(error){
+    console.error(error);
+    return new Error(error);
+  }
+}
+
+const getUnsignedUpTeam = async () => {
+  try{
+      const snapShot = await db.collection('users').where('teamSignup', '==', false)
+                                                  .where('rulesEngineActive', '==', true).get();
+      if(snapShot.size > 0){
+            return snapShot.docs.map(document => {
+              client.messages
+              .create({
+                body: 'Remainder to signup your team!',
+                from: '+18776203534',
+                to: processPhoneNumber(document.data().phone)
+              })
+              .then(message => console.log(message.sid));
+            });
+        }
+      else {
+            return false;
+      }
+  }
+  catch(error){
+      console.error(error);
+      return new Error(error);
+  }
+}
+
+const processPhoneNumber = (phone) => {
+  const hasNoSpecialCharacters = /[+()]/.test(phone);
+  if (phone.length === 10 && hasNoSpecialCharacters) return `+1`+phone
+  else if (phone.slice(0,2) === '+1' && phone.length > 10) return phone 
+}
+
 const getResponseJSON = (message, code) => {
     return { message, code };
 };
@@ -340,5 +442,8 @@ module.exports = {
     integrateRulesEngine,
     processCashAppPayment,
     createOrder,
-    capturePayment
+    capturePayment,
+    getUnpaidTeam,
+    getUnsignedUpTeam,
+    getPaidTeam
   }

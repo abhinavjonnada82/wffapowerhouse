@@ -270,7 +270,7 @@ const setTeamApproval = async (userId, phone) => {
               return true
         });
       let docRef = db.collection('messages').add({
-          to: `+1${phone}`,
+          to: processPhoneNumber(phone),
           body: 'Your team has been approved! - WFFA Team',
           mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
       })

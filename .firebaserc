@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "wffa25444"
-  }
+    "default": "wffa-live",
+    "prod": "wffa-live"
+  },
+  "targets": {},
+  "etags": {}
 }

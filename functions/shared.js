@@ -119,7 +119,7 @@ const processCashAppPayment = async (req, res) => {
     const { result, statusCode } = await square.paymentsApi.createPayment(payment); // square provides the API client and error types
     if(statusCode === 200) {
         const decodedToken = await validateIDToken(idToken);
-        await updatePaymentSuccess(decodedToken.uid);
+        await updatePaymentSuccess(decodedToken.uid, result.payment.id, result.payment.receiptUrl);
     }
   }
     catch (ex) {
@@ -174,7 +174,7 @@ const capturePayment = async (orderId, req) => {
       if(data.status === 'COMPLETED') {
         const idToken = req.headers.authorization?.split('Bearer ')[1];
         const decodedToken = await validateIDToken(idToken);
-        await updatePaymentSuccess(decodedToken.uid);
+        await updatePaymentSuccess(decodedToken.uid, data.id, data.links[0].href);
     }
   	  return data;
 }
@@ -193,12 +193,28 @@ async function generateAccessToken() {
   return data.access_token;
 }
 
-const updatePaymentSuccess = async (userId) => {
+const updatePaymentSuccess = async (userId, transactionId, receiptUrl) => {
     try {
          const snapshot = await db.collection('users').where('uid', '==', userId).get();
          if (snapshot.empty) return false
          const docId = snapshot.docs[0].id;
-         await db.collection("users").doc(docId).update({payment: true})
+         await db.collection("users").doc(docId).update({
+          payment: true,
+          transactionId,
+          receiptUrl 
+        })
+        console.log('dddd',  processPhoneNumber(snapshot.docs[0].data().phone))
+        try {
+          client.messages.create({
+            body: `Thanks for your payment. Here is your receipt ${receiptUrl} !`,
+            from: '+18776203534',
+            to: processPhoneNumber(snapshot.docs[0].data().phone)
+          })
+          .then(message => console.log(message.sid));
+        } catch(error){
+          console.error('Twilio error:', error.message);
+          console.error('Twilio moreInfo:', error.moreInfo)
+        }
          return true;
      }
      catch(error){
@@ -229,7 +245,10 @@ const setName = async (data, userId) => {
     const snapshot = await db.collection('users').where('uid', '==', userId).get();
     if (snapshot.empty) return false
     const docId = snapshot.docs[0].id;
-    await db.collection("users").doc(docId).update({name: data.data})
+    await db.collection("users").doc(docId).update({
+      name: data.name,
+      phone: data.phone
+    })
     return true;
   }
   catch(error){
@@ -318,17 +337,45 @@ const grabAdminRules = async (userId) => {
     }
 }
 
+const getPendingTeamSignUp = async () => {
+  try{
+      const snapShot = await db.collection('users').where('teamSignup', '==', false).where('rulesEngineActive', '==', true).get();
+      if(snapShot.size > 0){
+            return snapShot.docs.map(document => {
+              try {
+                client.messages
+                .create({
+                  body: `Remember to sign up your team before registration closes on ${document.data().rules.registrationDates[1]}!`,
+                  from: '+18776203534',
+                  to: processPhoneNumber(document.data().phone)
+                })
+                .then(message => console.log(message.sid));
+            } catch(error){
+                console.error('Twilio error:', error.message);
+                console.error('Twilio moreInfo:', error.moreInfo)
+            }
+            });
+        }
+      else {
+            return false;
+      }
+  }
+  catch(error){
+    console.error(error);
+    return new Error(error);
+}
+}
+
 const getUnpaidTeam = async () => {
   try{
       const snapShot = await db.collection('users').where('approve', '==', true).where('payment', '==', false).where('rulesEngineActive', '==', true)
       .orderBy('uid', 'asc').get();
       if(snapShot.size > 0){
-
             return snapShot.docs.map(document => {
               try {
               client.messages
               .create({
-                body: 'Remainder to pay WFFA dues!',
+                body: 'Remainder to pay your WFFA dues!',
                 from: '+18776203534',
                 to: processPhoneNumber(document.data().phone)
               })
@@ -406,8 +453,12 @@ const getUnsignedUpTeam = async () => {
 
 const processPhoneNumber = (phone) => {
   const hasNoSpecialCharacters = /[+()]/.test(phone);
-  if (phone.length === 10 && hasNoSpecialCharacters) return `+1`+phone
-  else if (phone.slice(0,2) === '+1' && phone.length > 10) return phone 
+  if (phone.length === 10 && !hasNoSpecialCharacters) {
+    return `+1`+phone
+  }
+  else if (phone.slice(0,2) === '+1' && phone.length > 10) {
+    return phone 
+  }
 }
 
 const getResponseJSON = (message, code) => {
@@ -445,5 +496,6 @@ module.exports = {
     capturePayment,
     getUnpaidTeam,
     getUnsignedUpTeam,
-    getPaidTeam
+    getPaidTeam,
+    getPendingTeamSignUp
   }

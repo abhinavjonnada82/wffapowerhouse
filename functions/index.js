@@ -16,19 +16,19 @@ app.use(bodyParser.json());
 
 
 app.post('/cashapp-payment', (req, res) => {
-    const { processCashAppPayment } = require('./shared');
+    const { processCashAppPayment } = require('./payment');
     processCashAppPayment(req)
     res.status(200).json({message: `Success!`, code:200})
 })
 
 app.post("/create-paypal-order", async (req, res) => {
-  const { createOrder } = require('./shared');
+  const { createOrder } = require('./payment');
   const order = await createOrder(req.body.payment);
   res.json(order);
 });
 
 app.post("/capture-paypal-order", async (req, res) => {
-  const { capturePayment } = require('./shared');
+  const { capturePayment } = require('./payment');
   const { orderID } = req.body;
   const captureData = await capturePayment(orderID, req);
   // TODO: store payment information such as the transaction ID

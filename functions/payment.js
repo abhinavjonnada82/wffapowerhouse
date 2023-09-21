@@ -37,7 +37,6 @@ const processCashAppPayment = async (req, res) => {
       payment.customerId = payload.customerId;
     }
     const { result, statusCode } = await square.paymentsApi.createPayment(payment); // square provides the API client and error types
-    console.log('resultttttt', result)
     if(statusCode === 200) {
         const { validateIDToken, updatePaymentSuccess  } = require('./shared');
         const decodedToken = await validateIDToken(idToken);
@@ -94,7 +93,6 @@ const capturePayment = async (orderId, req) => {
   	    },
   	  });
   	  const data = await response.json();
-      console.log('fs', data)
       if(data.status === 'COMPLETED') {
         const idToken = req.headers.authorization?.split('Bearer ')[1];
         const { validateIDToken, updatePaymentSuccess  } = require('./shared');

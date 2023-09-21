@@ -185,11 +185,19 @@ const setTeamApproval = async (userId, phone) => {
               await db.collection("teamRoster").doc(docId).update({approve: true})
               return true
         });
-      let docRef = db.collection('messages').add({
-          to: `+1${phone}`,
-          body: 'Your team has been approved! - WFFA Team',
-          mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
-      })
+      try {
+          client.messages
+          .create({
+            body: 'Your team has been approved!',
+            from: process.env.PHONE_NUMBER,
+            to: processPhoneNumber(phone),
+            mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
+          })
+          .then(message => console.log(message.sid));
+        } catch(error){
+          console.error('Twilio error:', error.message);
+          console.error('Twilio moreInfo:', error.moreInfo)
+        }
     })
     .catch((error) => {
         console.log("Error getting documents: ", error);

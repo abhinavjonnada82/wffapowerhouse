@@ -188,7 +188,7 @@ const setTeamApproval = async (userId, phone) => {
       try {
           client.messages
           .create({
-            body: 'Your team has been approved!',
+            body: 'Your team has been approved! - WFFA Team',
             from: process.env.PHONE_NUMBER,
             to: processPhoneNumber(phone),
             mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']

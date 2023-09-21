@@ -104,7 +104,7 @@ const updatePaymentSuccess = async (userId, transactionId, receiptUrl, paymentMe
         try {
           client.messages.create({
             body: `Thanks for your payment. Here is your receipt ${receiptUrl} !`,
-            from: '+18776203534',
+            from: process.env.PHONE_NUMBER,
             to: processPhoneNumber(snapshot.docs[0].data().phone)
           })
           .then(message => console.log(message.sid));
@@ -251,7 +251,7 @@ const getPendingTeamSignUp = async () => {
                 client.messages
                 .create({
                   body: `Remember to sign up your team before registration closes on ${document.data().rules.registrationDates[1]}!`,
-                  from: '+18776203534',
+                  from: process.env.PHONE_NUMBER,
                   to: processPhoneNumber(document.data().phone)
                 })
                 .then(message => console.log(message.sid));
@@ -281,7 +281,7 @@ const getUnpaidTeam = async () => {
               client.messages
               .create({
                 body: 'Remainder to pay your WFFA dues!',
-                from: '+18776203534',
+                from: process.env.PHONE_NUMBER,
                 to: processPhoneNumber(document.data().phone)
               })
               .then(message => console.log(message.sid));
@@ -310,7 +310,7 @@ const getPaidTeam = async () => {
               client.messages
               .create({
                 body: 'Get ready to play!',
-                from: '+18776203534',
+                from: process.env.PHONE_NUMBER,
                 to: processPhoneNumber(document.data().phone),
                 mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/football.png']
               })
@@ -340,7 +340,7 @@ const getUnsignedUpTeam = async () => {
               client.messages
               .create({
                 body: 'Remainder to signup your team!',
-                from: '+18776203534',
+                from: process.env.PHONE_NUMBER,
                 to: processPhoneNumber(document.data().phone)
               })
               .then(message => console.log(message.sid));

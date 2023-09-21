@@ -1,19 +1,6 @@
 const admin = require('firebase-admin');
 const db = admin.firestore();
 
-const { validatePaymentPayload } = require('./paymentServer/schema');
-const { ApiError, client: square } = require('./paymentServer/square');
-const { nanoid } = require('nanoid');
-
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID
-const PAYPAL_APP_SECRET = process.env.PAYPAL_APP_SECRET
-const fetch = require("node-fetch");
-const baseURL = {
-	    sandbox: "https://api-m.sandbox.paypal.com",
-	   // production: "https://api-m.paypal.com"
-	};
-
-
 require('dotenv').config();
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -93,117 +80,27 @@ const addTeamData = async (data, userId) => {
    }
 }
 
-const processCashAppPayment = async (req, res) => {
-    const idToken = req.headers.authorization?.split('Bearer ')[1];
-    const payload = {
-      locationId: req.body.locationId,
-      sourceId: req.body.sourceId
-    }
-    if (!validatePaymentPayload(payload)) { // schema validates incoming requests
-        return res.status(400).json(getResponseJSON('Bad Request!', 400));
-    }
-    try{
-    const idempotencyKey = nanoid();
-    const payment = {
-      idempotencyKey,
-      locationId: payload.locationId,
-      sourceId: payload.sourceId,
-      amountMoney: {
-        amount: req.body.payment,
-        currency: 'USD',
-      },
-    };
-    if (payload.customerId) {
-      payment.customerId = payload.customerId;
-    }
-    const { result, statusCode } = await square.paymentsApi.createPayment(payment); // square provides the API client and error types
-    if(statusCode === 200) {
-        const decodedToken = await validateIDToken(idToken);
-        await updatePaymentSuccess(decodedToken.uid, result.payment.id, result.payment.receiptUrl);
-    }
-  }
-    catch (ex) {
-      if (ex instanceof ApiError) {
-        // likely an error in the request. don't retry
-        console.log(ex.errors);
-      } else {
-        // IDEA: send to error reporting service
-        console.log(`Error creating payment on attempt: ${ex}`);
-        throw ex; // to attempt retry
-      }
-    }
-}
-
-const createOrder = async (payment) => {
-    const accessToken = await generateAccessToken();
-    const url = `${baseURL.sandbox}/v2/checkout/orders`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        intent: "CAPTURE",
-        purchase_units: [
-          {
-            amount: {
-              currency_code: "USD",
-              value: payment,
-            },
-          },
-        ],
-      }),
-    });
-    const data = await response.json();
-    return data;
-  }
-
-  	// use the orders api to capture payment for an order
-const capturePayment = async (orderId, req) => {
- 	  const accessToken = await generateAccessToken();
-  	  const url = `${baseURL.sandbox}/v2/checkout/orders/${orderId}/capture`;
-  	  const response = await fetch(url, {
-  	    method: "POST",
-  	    headers: {
-  	      "Content-Type": "application/json",
-  	      Authorization: `Bearer ${accessToken}`,
-  	    },
-  	  });
-  	  const data = await response.json();
-      if(data.status === 'COMPLETED') {
-        const idToken = req.headers.authorization?.split('Bearer ')[1];
-        const decodedToken = await validateIDToken(idToken);
-        await updatePaymentSuccess(decodedToken.uid, data.id, data.links[0].href);
-    }
-  	  return data;
-}
-
-// generate an access token using client id and app secret
-async function generateAccessToken() {
-  const auth = Buffer.from(PAYPAL_CLIENT_ID + ":" + PAYPAL_APP_SECRET).toString("base64")
-  const response = await fetch(`${baseURL.sandbox}/v1/oauth2/token`, {
-    method: "POST",
-    body: "grant_type=client_credentials",
-    headers: {
-      Authorization: `Basic ${auth}`,
-    },
-  });
-  const data = await response.json();
-  return data.access_token;
-}
-
-const updatePaymentSuccess = async (userId, transactionId, receiptUrl) => {
+const updatePaymentSuccess = async (userId, transactionId, receiptUrl, paymentMethod, initalDepositPayment) => {
     try {
          const snapshot = await db.collection('users').where('uid', '==', userId).get();
          if (snapshot.empty) return false
          const docId = snapshot.docs[0].id;
-         await db.collection("users").doc(docId).update({
-          payment: true,
-          transactionId,
-          receiptUrl 
-        })
-        console.log('dddd',  processPhoneNumber(snapshot.docs[0].data().phone))
+         if (paymentMethod === 'initalDeposit') {
+          await db.collection("users").doc(docId).update({
+            initalPaymentDepositFlag: true,
+            initalDepositTransactionId: transactionId,
+            initalDepositReceiptUrl: receiptUrl,
+            initalDepositPayment
+          })
+         }
+         else {
+          await db.collection("users").doc(docId).update({
+            payment: true,
+            transactionId,
+            receiptUrl,
+          })
+         }
+
         try {
           client.messages.create({
             body: `Thanks for your payment. Here is your receipt ${receiptUrl} !`,
@@ -288,11 +185,19 @@ const setTeamApproval = async (userId, phone) => {
               await db.collection("teamRoster").doc(docId).update({approve: true})
               return true
         });
-      let docRef = db.collection('messages').add({
-          to: processPhoneNumber(phone),
-          body: 'Your team has been approved! - WFFA Team',
-          mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
-      })
+      try {
+          client.messages
+          .create({
+            body: 'Your team has been approved! - WFFA Team',
+            from: process.env.PHONE_NUMBER,
+            to: processPhoneNumber(phone),
+            mediaUrl: ['https://raw.githubusercontent.com/abhinavjonnada82/wffawebapp/dev/src/assets/dog.png']
+          })
+          .then(message => console.log(message.sid));
+        } catch(error){
+          console.error('Twilio error:', error.message);
+          console.error('Twilio moreInfo:', error.moreInfo)
+        }
     })
     .catch((error) => {
         console.log("Error getting documents: ", error);
@@ -491,9 +396,6 @@ module.exports = {
     storeAdminRules,
     grabAdminRules,
     integrateRulesEngine,
-    processCashAppPayment,
-    createOrder,
-    capturePayment,
     getUnpaidTeam,
     getUnsignedUpTeam,
     getPaidTeam,

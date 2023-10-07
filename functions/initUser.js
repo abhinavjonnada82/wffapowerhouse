@@ -11,6 +11,7 @@ let docRef = db.collection('users').doc(user.uid);
 
   await docRef.set({
     created: admin.firestore.Timestamp.now(),
+    email: user.email,
     name: user.displayName,
     active: true,
     uid: user.uid,

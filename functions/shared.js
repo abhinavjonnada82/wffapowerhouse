@@ -28,9 +28,9 @@ const grabTeamData = async (userId) => {
   }
 }
 
-const grabAllTeamData = async () => {
+const grabAllTeamData = async (PIN) => {
   try{
-      const snapShot = await db.collection('teamRoster').where('approve', '==', false).get();
+      const snapShot = await db.collection('teamRoster').where('approve', '==', false).where('PIN', '==', parseInt(PIN)).get();
       if(snapShot.size > 0){
             return snapShot.docs.map(document => document.data());
         }
@@ -69,7 +69,6 @@ const addTeamData = async (data, userId) => {
        const docId = snapshot.docs[0].id;
        await db.collection("users").doc(docId).update({
                                     teamSignup: true,
-                                    phone: data.data.phone,
                                     teamName: data.data.teamName
                                   })
        return true;
@@ -217,7 +216,10 @@ const storeAdminRules = async (data) => {
         const snapshot = await db.collection('users').where('uid', '==', userId).get();
         if (snapshot.empty) return false
         const docId = snapshot.docs[0].id;
-        await db.collection("users").doc(docId).update({rulesEngineActive: true})
+        await db.collection("users").doc(docId).update({
+          rulesEngineActive: true,
+          PIN: data.rules.PIN
+        })
         return true;
      }
      catch(error){

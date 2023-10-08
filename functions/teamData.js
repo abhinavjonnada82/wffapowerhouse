@@ -38,9 +38,9 @@ const teamData = functions.https.onRequest(async (req, res) => {
             return res.status(200).json({data: result, code: 200})
         }
         if(req.query.type === 'allTeams') {
-            const queries = req.query;
+            const PIN = req.query.PIN;
             const { grabAllTeamData } = require('./shared');
-            const result = await grabAllTeamData();
+            const result = await grabAllTeamData(PIN);
             if(result instanceof Error){
                 return res.status(500).json(getResponseJSON(result.message, 500));
             }
@@ -167,7 +167,7 @@ const teamData = functions.https.onRequest(async (req, res) => {
           }
         }
 
-        else if(api == 'rulesEngine'){
+        else if(api == 'adminRulesEngine'){
             if(req.method !== 'POST') {
                 return res.status(405).json(getResponseJSON('Only POST requests are accepted!', 405));
             }
@@ -180,6 +180,8 @@ const teamData = functions.https.onRequest(async (req, res) => {
             if(Object.keys(requestData).length === 0 ) return res.status(400).json(getResponseJSON('Request body is empty!', 400));
             const { storeAdminRules } = require('./shared');
             if (decodedToken) {
+                requestData.rules["elminationFormat"] = "Single Elmination"
+                requestData.rules["tournamentFormat"] = "5 Man No Contact"
                 const response = await storeAdminRules(requestData);
                 if(!response) return res.status(404).json(getResponseJSON('ERROR!', 404));
                 return res.status(200).json({message: `Success!`, code:200})

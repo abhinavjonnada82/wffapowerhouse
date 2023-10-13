@@ -359,12 +359,13 @@ const getUnsignedUpTeam = async () => {
 }
 
 const processPhoneNumber = (phone) => {
-  const hasNoSpecialCharacters = /[+()]/.test(phone);
-  if (phone.length === 10 && !hasNoSpecialCharacters) {
-    return `+1`+phone
+  phone = phone.replace(/[^\w\s]/g, "") // removes trailing spaces & etc.
+  const hasSpecialCharacters = /[+()]/.test(phone);
+  if (phone.length === 10 && !hasSpecialCharacters) {
+    return `+1${phone}`;
   }
-  else if (phone.slice(0,2) === '+1' && phone.length > 10) {
-    return phone 
+  else if (phone.startsWith("+1") && phone.length > 10) {
+    return phone;
   }
 }
 

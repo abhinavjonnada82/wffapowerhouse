@@ -273,6 +273,37 @@ const getPendingTeamSignUp = async () => {
 }
 }
 
+const approveTeamsRemainder = async () => {
+  try{
+      const snapShot = await db.collection('users').where('approve', '==', false).where('teamSignup', '==', true).get();
+      if(snapShot.size > 0){
+            return snapShot.docs.map(document => {
+              // grab PIN from rules.pin
+              // perform a query with role === admin & pin === rules.pin in users table
+              try {
+                client.messages
+                .create({
+                  body: `You got teams to approve!`,
+                  from: process.env.PHONE_NUMBER,
+                  to: processPhoneNumber(document.data().phone)
+                })
+                .then(message => console.log(message.sid));
+            } catch(error){
+                console.error('Twilio error:', error.message);
+                console.error('Twilio moreInfo:', error.moreInfo)
+            }
+            });
+        }
+      else {
+            return false;
+      }
+  }
+  catch(error){
+    console.error(error);
+    return new Error(error);
+}
+}
+
 const getUnpaidTeam = async () => {
   try{
       const snapShot = await db.collection('users').where('approve', '==', true).where('payment', '==', false).where('rulesEngineActive', '==', true)
@@ -402,5 +433,6 @@ module.exports = {
     getUnpaidTeam,
     getUnsignedUpTeam,
     getPaidTeam,
-    getPendingTeamSignUp
+    getPendingTeamSignUp,
+    approveTeamsRemainder
   }
